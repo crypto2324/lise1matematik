@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "functions": {
+    "api/soru-cozme.php": {
+      "runtime": "vercel-php@0.7.2",
+      "memory": 1024,
+      "maxDuration": 300
+    }
+  },
+  "routes": [
+    { "src": "/", "dest": "/api/soru-cozme.php" },
+    { "src": "/(.*)", "dest": "/api/soru-cozme.php" }
+  ]
+}
