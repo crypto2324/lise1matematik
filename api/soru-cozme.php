@@ -5,7 +5,7 @@
 // ============================================================
 
 // ---------- 1) AYARLAR ----------
-$api_key = getenv('NVIDIA_API_KEY') ?: '';
+$api_key = getenv('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') ?: '';
 $model   = 'nvidia/nemotron-3.5-bolt-e4b';
 $api_url = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
