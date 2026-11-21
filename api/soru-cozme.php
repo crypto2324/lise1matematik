@@ -409,6 +409,9 @@ $harfler = array_slice(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], 0, $sik_sayisi)
     }
 })();
 </script>
-<!-- https://github.com/ucretsizyazilimlar/matematiksorulari -->
+</script>
+<p style="text-align:center;font-size:13px;color:#6b7280;margin-top:20px;">
+    <a href="https://github.com/ucretsizyazilimlar/matematiksorulari" target="_blank" rel="noopener">GitHub — ucretsizyazilimlar/matematiksorulari</a>
+</p>
 </body>
 </html>
