@@ -408,7 +408,7 @@ $harfler = array_slice(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], 0, $sik_sayisi)
         setStatus('Sonuçlar gösterildi. Yeni sorular için "<?= htmlspecialchars($buton_yazi, ENT_QUOTES) ?>" butonuna bas.');
     }
 })();
- <link> https://github.com/ucretsizyazilimlar/matematiksorulari <<link>
 </script>
+<!-- https://github.com/ucretsizyazilimlar/matematiksorulari -->
 </body>
 </html>
