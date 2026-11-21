@@ -2,10 +2,13 @@
 // ============================================================
 // api/soru-cozme.php — Vercel (serverless) uyumlu sürüm
 // Oturum: imzalı + şifreli ÇEREZ (session_start() yok)
+// API anahtarı ve secret KOD İÇİNDE gömülü.
 // ============================================================
 
 // ---------- 1) AYARLAR ----------
-$api_key = getenv('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') ?: '';
+$api_key    = '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';
+$app_secret = 'q7F2mN9xL4vB8kR1pY6wT3zH5jC0sA2dE7gU9iO4bV1nM8kX6cZ3fJ5hL0pQ2rS';
+
 $model   = 'nvidia/nemotron-3.5-bolt-e4b';
 $api_url = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
@@ -23,7 +26,6 @@ $ek_talimat  = 'Sorular 9. sınıf (Lise 1) müfredatına uygun olsun: kümeler,
 
 $max_uretim_saat = 10;
 
-// Çerez adı ve ömrü
 define('COOKIE_NAME', 'qstate');
 define('COOKIE_TTL', 3600); // 1 saat
 
@@ -40,27 +42,22 @@ function b64u_dec(string $s): string {
     return base64_decode(strtr($s, '-_', '+/')) ?: '';
 }
 
-/**
- * Cookie'deki durumu şifreli+imzalı olarak okur.
- * Format: b64u(nonce|tag|chipher) . '.' . b64u(hmac)
- */
-function state_read(): array {
+function state_read(string $secret): array {
     $raw = $_COOKIE[COOKIE_NAME] ?? '';
     if ($raw === '' || !str_contains($raw, '.')) return [];
 
     [$encPart, $macPart] = explode('.', $raw, 2);
-    $secret = getenv('APP_SECRET') ?: 'change-me-please';
     $expected = b64u_enc(hash_hmac('sha256', $encPart, $secret, true));
     if (!hash_equals($expected, $macPart)) return [];
 
     $blob = b64u_dec($encPart);
     if (strlen($blob) < 28) return [];
 
-    $nonce = substr($blob, 0, 12);
-    $tag   = substr($blob, 12, 16);
-    $cipher= substr($blob, 28);
+    $nonce  = substr($blob, 0, 12);
+    $tag    = substr($blob, 12, 16);
+    $cipher = substr($blob, 28);
 
-    $key = hash('sha256', $secret, true); // 32 byte
+    $key = hash('sha256', $secret, true);
     $plain = openssl_decrypt($cipher, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
     if ($plain === false) return [];
 
@@ -70,17 +67,16 @@ function state_read(): array {
     return $data;
 }
 
-function state_write(array $data): void {
+function state_write(array $data, string $secret): void {
     $data['exp'] = time() + COOKIE_TTL;
     $plain = json_encode($data, JSON_UNESCAPED_UNICODE);
 
-    $secret = getenv('APP_SECRET') ?: 'change-me-please';
     $key = hash('sha256', $secret, true);
-    $nonce = random_bytes(12);
-    $tag = '';
+    $nonce  = random_bytes(12);
+    $tag    = '';
     $cipher = openssl_encrypt($plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $nonce, $tag);
 
-    $blob = $nonce . $tag . $cipher;
+    $blob    = $nonce . $tag . $cipher;
     $encPart = b64u_enc($blob);
     $macPart = b64u_enc(hash_hmac('sha256', $encPart, $secret, true));
     $cookie  = $encPart . '.' . $macPart;
@@ -96,16 +92,6 @@ function state_write(array $data): void {
         'samesite' => 'Lax',
     ]);
     $_COOKIE[COOKIE_NAME] = $cookie;
-}
-
-function state_clear(): void {
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-              || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
-    setcookie(COOKIE_NAME, '', [
-        'expires' => time() - 3600, 'path' => '/', 'secure' => $secure,
-        'httponly' => true, 'samesite' => 'Lax',
-    ]);
-    unset($_COOKIE[COOKIE_NAME]);
 }
 
 // ============================================================
@@ -143,12 +129,12 @@ function nv_chat(string $url, string $key, array $payload): array {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action'])) {
     @set_time_limit(280);
     $action = $_GET['action'];
-    $state  = state_read();
+    $state  = state_read($app_secret);
 
     // ---- Soruları üret ----
     if ($action === 'generate') {
         if ($api_key === '') {
-            json_out(['error' => 'NVIDIA API anahtarı ayarlanmamış (Vercel ortam değişkeni: NVIDIA_API_KEY).'], 500);
+            json_out(['error' => 'NVIDIA API anahtarı dosyada ayarlanmamış.'], 500);
         }
 
         $now = time();
@@ -208,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action'])) {
             $valid
         );
         $state['gen_times'] = $times;
-        state_write($state);
+        state_write($state, $app_secret);
 
         $public = array_map(fn($v) => ['q' => $v['q'], 'options' => $v['options']], $valid);
         json_out(['questions' => $public]);
